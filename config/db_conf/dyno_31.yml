@@ -1,0 +1,21 @@
+dyn_o_mite:
+  datacenter: dc1
+  rack: rack3
+  dyn_listen: 192.168.68.32:8101
+  dyn_seeds:
+  - 192.168.68.14:8101:rack1:dc1:111
+  - 192.168.68.17:8101:rack2:dc1:222
+  - 192.168.68.47:8101:rack4:dc1:444
+  - 192.168.68.51:8101:rack5:dc1:555
+  - 192.168.68.55:8101:rack6:dc1:666
+  data_store: 0
+  listen: 192.168.68.32:8102
+  dyn_seed_provider: simple_provider
+  servers:
+  - 192.168.68.32:6379:1
+  tokens: 333
+  secure_server_option: none
+  stats_listen: 127.0.0.1:30002
+  recon_key_file: conf/dyno.pem.pub
+  recon_iv_file: conf/dyno.pem
+  max_msgs: 500000
