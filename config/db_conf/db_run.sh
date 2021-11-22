@@ -60,8 +60,11 @@ start_dynomite(){
 }
 
 start_monitor(){
-    sleep 1s
-    /home/config/db_conf/init_map $slot_no $REDIS_IP > /dev/null 
+if [ $id -eq 13 ]
+    then
+            sleep 1s
+            /home/config/db_conf/init_map $slot_no $REDIS_IP > /dev/null 
+    fi
 }
 
 stop_monitor(){
