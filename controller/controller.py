@@ -35,12 +35,12 @@ def load_command():
     const_command.timer_diff = 6
     const_command.timer_rt_diff = 7
 
-def __update_slot_diff_links2sh(slot_no, sw_fail:set, links:list, filename):
+def __update_slot_diff_links2sh(slot_no, sw_fail:set, links:list, filePath):
     # 由于卫星失效，所有需要对原来的脚本进行更新
     for index in range(len(links)-1, -1, -1):
         if links[index][1] in sw_fail or links[index][2] in sw_fail:
             del links[index]
-    __a_slot_diff_links2sh(slot_no, filename, links)
+    __a_slot_diff_links2sh(slot_no, filePath + "/config/links_shell/" , links)
  
 def run_shell(file):
     # 运行shell文件
@@ -98,13 +98,12 @@ class controller:
                     all_task = []
                     for sw_no in sw_fail:
                         if sw_no in self.tp.db_data:
-                            all_task.append(pool.submit(os.system, "sudo docker stop s{} > /dev/null; sudo docker exec -it db{} /bin/bash -c \"/home/db_run.sh stop\"".format(sw_no, sw_no)))
+                            all_task.append(pool.submit(os.system, "sudo docker stop s{} > /dev/null; sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh stop\"".format(sw_no, sw_no)))
                         else:
                             all_task.append(pool.submit(os.system, "sudo docker stop s{} > /dev/null".format(sw_no)))
                 # 更新运行的脚本
                     for slot_no in range(self.tp.num_slot):
-                        all_task.append(pool.submit(__update_slot_diff_links2sh, slot_no, sw_fail, self.tp.diff_topos[slot_no], \
-                            "{}/config/links_shell/diff_links_slot{}.sh".format(self.tp.filePath, slot_no)))
+                        all_task.append(pool.submit(__update_slot_diff_links2sh, slot_no, sw_fail, self.tp.diff_topos[slot_no], self.tp.filePath))
                     wait(all_task, return_when=ALL_COMPLETED)
                 # 更新失效的卫星
                 self.sw_fail += sw_fail
@@ -132,20 +131,20 @@ class controller:
                     all_task.clear()
                 # 加载控制通道路由
                     for sw_no in self.tp.data_topos[0]:  # ct-db的路由读取
-                        all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/fl_ct2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
+                        all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_ct2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
                     for db_no in self.tp.db_data:        # db-db的路由读取
-                        all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/fl_db2db_s{}_slot{}".format(db_no, db_no, db_no, slot_no)))
+                        all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_db2db_s{}_slot{}".format(db_no, db_no, db_no, slot_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                 # 重新启动数据库
                     for db_no in self.tp.db_data:
                         if db_no in self.sw_fail:
                             all_task.append(pool.submit(os.system,"sudo ./config/db_conf/db_init.sh {}".format(db_no)))
-                        all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash /home/db_run.sh start {} {}".format(db_no, db_no, slot_no)))
+                        all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash /home/config/db_conf/db_run.sh start {} {}".format(db_no, db_no, slot_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                     for db_no in self.tp.db_data:
-                        all_task.append(pool.submit(os.system,"sudo docker exec -it db{} nohup /home/monitor_new 192.168.68.{} >> db.log &".format(db_no, db_no+1)))
+                        all_task.append(pool.submit(os.system,"sudo docker exec -it db{} nohup /home/config/db_conf/monitor_new 192.168.68.{} >> db.log &".format(db_no, db_no+1)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                 # 重新启动控制器
@@ -179,10 +178,10 @@ class controller:
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                 # 链路修改
-                    run_shell("{}/config/links_shell/diff_links_slot{}.sh".format(self.tp.filePath, slot_no))
+                    run_shell("{}/config/links_shell/links_add_slot{}.sh".format(self.tp.filePath, slot_no))
                     for sw_no in self.tp.data_topos[0]:
                         if sw_no not in self.sw_fail:
-                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/s{}_links_change_slot{}.sh".format(sw_no, sw_no, slot_no+1)))
+                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh".format(sw_no, sw_no, slot_no+1)))
                     wait(all_task, return_when=ALL_COMPLETED)
                 self.slot_now = slot_no+1
 

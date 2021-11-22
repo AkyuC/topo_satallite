@@ -78,16 +78,16 @@ def __a_slot_diff_links2sh(slot_no, path, links:list):
             for link in links[sw_no]:  # 修改容器内部的链路连接到ovs交换机上面
                 p = "s{}-s{}".format(link[1],link[2])
                 if link[0] == 0:   # 修改链路时延，因为保存了两遍，所以只需要写一侧，下面也是
-                    file.write("sudo docker exec -it s{} tc qdisc change dev {} root netem delay {}ms > /dev/null\n".\
-                        format(link[1], p,int(link[3]*1000)))
+                    file.write("tc qdisc change dev {} root netem delay {}ms > /dev/null\n".\
+                        format(p, int(link[3]*1000)))
                 elif link[0] == -1: # 删除链路
-                    file.write("sudo docker exec -it s{} ovs-vsctl del-port s{} {} > /dev/null\n".format(link[1], link[1], p))
+                    file.write("ovs-vsctl del-port s{} {} > /dev/null\n".format(link[1], p))
                     if link[1]>link[2]: # veth-pair删除一边就能把另一边也删除
-                        file.write("sudo docker exec -it s{} ip link delete {} > /dev/null\n".format(link[1], p))
+                        file.write("ip link delete {} > /dev/null\n".format(p))
                 else:   # 将veth-pair绑到ovs上，并且设置端口号，这里的端口号连接那个卫星交换机，就设置为1000+id，如s1连接s2的端口号就是1002，s2连接s1的端口就是1001，本地局部不一样就可以
-                    file.write("sudo docker exec -it s{} ovs-vsctl add-port s{} {} -- set interface {} ofport_request={} > /dev/null\n"\
-                        .format(link[1], link[1], p, p, link[2]+1000))
-                    file.write("sudo docker exec -it s{} tc qdisc add dev {} root netem delay {}ms > /dev/null\n".format(link[1], p,int(link[3]*1000)))
+                    file.write("ovs-vsctl add-port s{} {} -- set interface {} ofport_request={} > /dev/null\n"\
+                        .format(link[1], p, p, link[2]+1000))
+                    file.write("tc qdisc add dev {} root netem delay {}ms > /dev/null\n".format(p, int(link[3]*1000)))
     
         os.system("sudo chmod +x {}".format(filename))  # 修改权限
 

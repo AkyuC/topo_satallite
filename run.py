@@ -1,4 +1,4 @@
-import os
+import os, sys
 import time
 from topo.topo import topo
 from utils.genConfig import gen_diff_links2sh, gen_route2sh
@@ -9,6 +9,7 @@ from controller.controller import controller
 
 if __name__ == "__main__":
     # 获取当前的路径
+    os.system("sudo echo start!")
     start = time.time()
     filePath = os.path.dirname(__file__)
 
@@ -36,17 +37,17 @@ if __name__ == "__main__":
         all_task = []
         print("每个sw容器初始化执行!")
         for sw_no in tp.data_topos[0]:   
-            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} /bin/bash /home/s{}_init_slot0.sh".format(sw_no, sw_no)))
+            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_init_slot0.sh".format(sw_no, sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
 
         print("加载第0个时间片的默认控制通道路由!")
         for sw_no in tp.data_topos[0]:  # ct-db的路由读取
-            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/fl_ct2db_s{}_slot0".format(sw_no, sw_no, sw_no)))
+            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_ct2db_s{}_slot0".format(sw_no, sw_no, sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
         for sw_no in tp.data_topos[0]:  # db-db的路由读取
-            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/fl_db2db_s{}_slot0".format(sw_no, sw_no, sw_no)))
+            all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_db2db_s{}_slot0".format(sw_no, sw_no, sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
         print("数据库的接口ip配置等!")
@@ -57,11 +58,11 @@ if __name__ == "__main__":
 
         print("启动所有的数据库及其代理!")
         for db_no in tp.db_data:
-            all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash -c \"/home/db_run.sh start {} {}\"".format(db_no, db_no, 0)))
+            all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh start {} {}\"".format(db_no, db_no, 0)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
         for db_no in tp.db_data:
-            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"nohup /home/monitor_new 192.168.68.{} > /home/db.log &\"".format(db_no, db_no+1)))
+            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"nohup /home/config/db_conf/monitor_new 192.168.68.{} > /home/db.log &\"".format(db_no, db_no+1)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
 
@@ -76,8 +77,7 @@ if __name__ == "__main__":
             all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653;"\
                 .format(s=sw_no, ip=sw_no+1, slot=0)))
         wait(all_task, return_when=ALL_COMPLETED)
-    
-    print(time.time() - start)
 
     print("启动监听指令程序!")
-    ctrl = controller(tp)
+    print(time.time() - start)
+    # ctrl = controller(tp)

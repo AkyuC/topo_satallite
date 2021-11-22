@@ -14,7 +14,7 @@ CLIREDIS_EXEC=/usr/bin/redis-cli
 #redis的PID文件位置，需要修改
 REDIS_PIDFILE=/var/run/redis-server.pid
 #redis的配置文件位置，需将${REDIS_REDISPORT}修改为文件名
-REDIS_CONF="/home/redis_$id.conf"
+REDIS_CONF="/home/config/db_conf/redis_$id.conf"
 
 REDIS_IP="192.168.68.$ip"
 
@@ -22,12 +22,12 @@ REDIS_IP="192.168.68.$ip"
 #
 DYNOMITE_EXEC=/usr/sbin/dynomite
 #
-DYNOMITE_CONF="/home/dyno_$id.yml"
+DYNOMITE_CONF="/home/config/db_conf/dyno_$id.yml"
 #
-DYNOMITE_LOG="/home/dyno_$id.log"
+DYNOMITE_LOG="/home/config/db_conf/dyno_$id.log"
 
 start_redis(){
-    cp /home/dump.rdb.back /var/lib/redis/dump.rdb
+    cp /home/config/db_conf/dump.rdb.back /var/lib/redis/dump.rdb
     if [ -f $REDIS_PIDFILE ]
     then
             echo "$REDIS_PIDFILE exists, process is already running or crashed"
@@ -61,8 +61,7 @@ start_dynomite(){
 
 start_monitor(){
     sleep 1s
-    /home/init_map $slot_no $REDIS_IP > /dev/null 
-    # nohup /home/monitor_new $REDIS_IP > db.log &
+    /home/config/db_conf/init_map $slot_no $REDIS_IP > /dev/null 
 }
 
 stop_monitor(){
@@ -72,7 +71,7 @@ stop_monitor(){
 restart_redis(){
     if [ ! -f $REDIS_PIDFILE ]
     then
-            cp /home/dump.rdb.back /var/lib/redis/dump.rdb
+            cp /home/config/db_conf/dump.rdb.back /var/lib/redis/dump.rdb
             $REDIS_EXEC $REDIS_CONF 
     else
             PID=$(cat $REDIS_PIDFILE)
@@ -81,7 +80,7 @@ restart_redis(){
             do
                 sleep 1
             done
-            cp /home/dump.rdb.back /var/lib/redis/dump.rdb
+            cp /home/config/db_conf/dump.rdb.back /var/lib/redis/dump.rdb
             $REDIS_EXEC $REDIS_CONF             
     fi
     killall -9 redis-cli
