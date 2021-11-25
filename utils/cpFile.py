@@ -23,4 +23,6 @@ def cp_sh2docker(tp: topo):
         for sw_no in tp.data_topos[0]:
         # 控制器根据时间片连接数据库的配置文件复制
             all_task.append(pool.submit(__cp_a_file2docker_sw, sw_no, "{}/config/ctrl_conn_db/ctrl_{}".format(tp.filePath, sw_no), "ctrl2db"))
+        for db_no in tp.db_data:
+            all_task.append(pool.submit(__cp_a_file2docker_db, db_no, "{}/config/db_conf/monitor_new".format(tp.filePath)))
         wait(all_task, return_when=ALL_COMPLETED)

@@ -21,10 +21,10 @@ if __name__ == "__main__":
 
     # 是否需要生成配置文件，如果需要，执行命令时就输入参数。如python3 run.py 1
     # if len(sys.argv) > 0:
-    # print("控制通道路由生成，并且写成脚本!")
-    # gen_route2sh(tp)
-    # print("时间片链路修改脚本生成!")
-    # gen_diff_links2sh(tp)
+    print("控制通道路由生成，并且写成脚本!")
+    gen_route2sh(tp)
+    print("时间片链路修改脚本生成!")
+    gen_diff_links2sh(tp)
 
     print("配置文件复制进入容器当中!")
     cp_sh2docker(tp)
@@ -62,7 +62,7 @@ if __name__ == "__main__":
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
         for db_no in tp.db_data:
-            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"nohup /home/config/db_conf/monitor_new 192.168.68.{} > /home/db.log &\"".format(db_no, db_no+1)))
+            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_no, db_no+1)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
 
@@ -74,7 +74,7 @@ if __name__ == "__main__":
         all_task.clear()
         time.sleep(5)
         for sw_no in tp.data_topos[0]:  
-            all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653;"\
+            all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
                 .format(s=sw_no, ip=sw_no+1, slot=0)))
         wait(all_task, return_when=ALL_COMPLETED)
 

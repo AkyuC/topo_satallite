@@ -29,17 +29,20 @@ if __name__ == "__main__":
     tp = topo(filePath)
 
     for slot_no in range(tp.num_slot):
-        time.sleep(20)
+        print("slot_no: {}".format(slot_no))
+        time.sleep(30)
 
+        print("调整路由，slot_no: {} -> {}".format(slot_no, slot_no+1))
         # 告知所有的数据库
         with ThreadPoolExecutor(max_workers=tp.num_db) as pool:
             all_task = []
             for db_no in tp.db_data:
-                all_task.append(pool.submit(db_get_slot_change, slot_no+1, db_no))
+                all_task.append(pool.submit(db_get_slot_change, slot_no, db_no))
             wait(all_task, return_when=ALL_COMPLETED)
         
-        time.sleep(20)
+        time.sleep(10)
 
+        print("时间片切换，slot_no: {} -> {}".format(slot_no, slot_no+1))
         with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
             all_task = []
             for ctrl_no in tp.data_topos[0]:
@@ -47,7 +50,7 @@ if __name__ == "__main__":
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
         # 链路修改
-            run_shell("{}/config/links_shell/links_add_slot{}.sh".format(tp.filePath, slot_no+1))
+            run_shell("{}/config/links_shell/links_add_slot{}.sh > /dev/null".format(tp.filePath, slot_no+1))
             for sw_no in tp.data_topos[0]:
-                    all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh".format(sw_no, sw_no, slot_no+1)))
+                    all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, slot_no+1)))
             wait(all_task, return_when=ALL_COMPLETED)

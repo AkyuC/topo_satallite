@@ -91,7 +91,7 @@ def __a_slot_diff_links2sh(slot_no, path, links:list):
     
         os.system("sudo chmod +x {}".format(filename))  # 修改权限
 
-def __a_sw_init_slot0sh(sw_no, filename, sw_adj:dict):
+def __a_sw_init_slot0sh(sw_no, filename, sw_adj:dict, is_db=False):
     # 将一个sw初始化写成shell脚本
     with open(filename, 'w+') as file:
         # file.write("ip route flush table main\n".format(sw_no)) # 清空linux的路由表
@@ -103,7 +103,7 @@ def __a_sw_init_slot0sh(sw_no, filename, sw_adj:dict):
         file.write("ifconfig s{} 192.168.66.{} netmask 255.255.0.0 up\n".format(sw_no, sw_no+1))  # ip设置
         file.write("route add default dev s{}\n".format(sw_no)) # 默认路由设置
         # 连接一个不存在的控制器，使得sw的模式改为流表匹配模式
-        file.write("ovs-vsctl set-controller s{} tcp:192.168.100.1:6653 -- set bridge s{} other_config:enable-flush=false\n".format(sw_no, sw_no))
+        file.write("ovs-vsctl set-controller s{} tcp:192.168.10.1:6653 -- set bridge s{} other_config:enable-flush=false\n".format(sw_no, sw_no))
         file.write("ovs-vsctl set bridge s{} other_config:disable-in-band=false\n".format(sw_no))   # 设置连接控制器的模式
         file.write("ovs-vsctl set controller s{} connection-mode=out-of-band\n".format(sw_no))
         # 本地流表设置
@@ -112,10 +112,11 @@ def __a_sw_init_slot0sh(sw_no, filename, sw_adj:dict):
         file.write("ovs-ofctl add-flow s{} \"table=1,priority=10,arp action=drop\"\n".format(sw_no))
         file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.66.{} action=output:LOCAL\"\n".format(sw_no, sw_no+1))
         file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.66.{} action=output:LOCAL\"\n".format(sw_no, sw_no+1))
-        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.68.{} action=output:{}\"\n".format(sw_no, sw_no+1, sw_no+2000))
-        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.68.{} action=output:{}\"\n".format(sw_no, sw_no+1, sw_no+2000))
-        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.100.1 action=drop\"\n".format(sw_no))
-        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.100.1 action=drop\"\n".format(sw_no))
+        if(is_db):
+            file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.68.{} action=output:{}\"\n".format(sw_no, sw_no+1, sw_no+2000))
+            file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.68.{} action=output:{}\"\n".format(sw_no, sw_no+1, sw_no+2000))
+        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.10.1 action=drop\"\n".format(sw_no))
+        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.10.1 action=drop\"\n".format(sw_no))
         # 将slot0的链接端口绑定到sw上
         for sw_adj_no in sw_adj:
             p = "s{}-s{}".format(sw_no, sw_adj_no)
@@ -149,7 +150,10 @@ def gen_diff_links2sh(tp: topo):
     with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
         all_task = []
         for sw_no in tp.data_topos[0]:   
-            all_task.append(pool.submit(__a_sw_init_slot0sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no]))
+            if(sw_no in tp.db_data):
+                all_task.append(pool.submit(__a_sw_init_slot0sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], True))
+            else:
+                all_task.append(pool.submit(__a_sw_init_slot0sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], False))
         wait(all_task, return_when=ALL_COMPLETED)
 
     # 时间片切换的链路修改
