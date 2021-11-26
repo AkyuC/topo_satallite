@@ -2,7 +2,7 @@ import os
 
 if __name__ == '__main__' :
     #获取当前文件路径，读取配置文件需要
-    filePath = os.path.dirname(__file__)
+    filePath = os.getcwd()
 
     sw_num = 0
     with open(file=filePath + "/config/timeslot/test_0") as file:

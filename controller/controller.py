@@ -146,7 +146,7 @@ class controller:
                 # 重新启动数据库
                     for db_no in self.tp.db_data:
                         if db_no in self.sw_fail:
-                            all_task.append(pool.submit(os.system,"sudo ./config/db_conf/db_init.sh {}".format(db_no)))
+                            all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {}".format(self.tp.filePath, db_no)))
                         all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash /home/config/db_conf/db_run.sh start {} {}".format(db_no, db_no, slot_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
@@ -177,27 +177,27 @@ class controller:
 
             elif(command[0] ==  const_command.timer_diff):
                 slot_no = command[1]   # 获取切换的时间片序号
-                print("时间片切换, slot_no{} --> slot_no{}".format(slot_no, slot_no+1))
-                # 告知所有的控制器时间片切换
+                print("时间片切换，slot_no: {} -> {}".format(slot_no, slot_no+1))
                 with ThreadPoolExecutor(max_workers=self.tp.num_sw) as pool:
                     all_task = []
                     for ctrl_no in self.tp.data_topos[0]:
-                        if ctrl_no not in self.sw_fail: # 失效的不告知
+                        if ctrl_no not in self.sw_fail:   # 失效的不告知
                             all_task.append(pool.submit(ctrl_get_slot_change, slot_no+1, ctrl_no))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                 # 链路修改
-                    run_shell("{}/config/links_shell/links_add_slot{}.sh".format(self.tp.filePath, slot_no))
+                    run_shell("{}/config/links_shell/links_add_slot{}.sh".format(self.tp.filePath, slot_no+1))
                     for sw_no in self.tp.data_topos[0]:
-                        if sw_no not in self.sw_fail:
-                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh".format(sw_no, sw_no, slot_no+1)))
+                        if sw_no not in self.sw_fail:   # 失效的不运行
+                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, slot_no+1)))
                     wait(all_task, return_when=ALL_COMPLETED)
+                print("时间片切换，slot_no: {} -> {}，结束".format(slot_no, slot_no+1))
                 self.slot_now = slot_no+1
 
             elif(command[0] ==  const_command.timer_rt_diff):
                 slot_no = command[1]   # 获取切换的时间片，提前调整路由
                 # 告知所有的数据库
-                print("时间片{}提前调整路由".format(slot_no))
+                print("调整路由, slot_no； {} -> {}".format(slot_no, slot_no+1))
                 with ThreadPoolExecutor(max_workers=self.tp.num_db) as pool:
                     all_task = []
                     for db_no in self.tp.db_data:

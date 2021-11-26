@@ -22,7 +22,7 @@ def db_get_slot_change(slot_no, db_no):
 if __name__ == "__main__":
     # 获取当前的路径
     start = time.time()
-    filePath = os.path.dirname(__file__)
+    filePath = os.getcwd()
     os.system("sudo echo start!")
 
     print("读取时间片数据!")
@@ -50,7 +50,7 @@ if __name__ == "__main__":
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
         # 链路修改
-            run_shell("{}/config/links_shell/links_add_slot{}.sh > /dev/null".format(tp.filePath, slot_no+1))
+            run_shell("{}/config/links_shell/links_add_slot{}.sh".format(tp.filePath, slot_no+1))
             for sw_no in tp.data_topos[0]:
                     all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, slot_no+1)))
             wait(all_task, return_when=ALL_COMPLETED)

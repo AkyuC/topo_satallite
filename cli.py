@@ -37,7 +37,7 @@ class cli:
                     )
 
                 command = input(">Input commands:\n").strip()
-                print('')
+                print('\n')
                 if len(command) == 0:
                     print("请正确输入！\n")
                     continue

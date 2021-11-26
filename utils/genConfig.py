@@ -81,9 +81,9 @@ def __a_slot_diff_links2sh(slot_no, path, links:list):
                     file.write("tc qdisc change dev {} root netem delay {}ms > /dev/null\n".\
                         format(p, int(link[3]*1000)))
                 elif link[0] == -1: # 删除链路
-                    file.write("ovs-vsctl del-port s{} {} > /dev/null\n".format(link[1], p))
+                    file.write("ovs-vsctl del-port s{} {} > /dev/null;\n".format(link[1], p))
                     if link[1]>link[2]: # veth-pair删除一边就能把另一边也删除
-                        file.write("ip link delete {} > /dev/null\n".format(p))
+                        file.write("tc qdisc del dev {} root > /dev/null; ip link delete {} > /dev/null\n".format(p, p))
                 else:   # 将veth-pair绑到ovs上，并且设置端口号，这里的端口号连接那个卫星交换机，就设置为1000+id，如s1连接s2的端口号就是1002，s2连接s1的端口就是1001，本地局部不一样就可以
                     file.write("ovs-vsctl add-port s{} {} -- set interface {} ofport_request={} > /dev/null\n"\
                         .format(link[1], p, p, link[2]+1000))

@@ -1,4 +1,4 @@
-import os, sys
+import os
 import time
 from topo.topo import topo
 from utils.genConfig import gen_diff_links2sh, gen_route2sh
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     # 获取当前的路径
     os.system("sudo echo start!")
     start = time.time()
-    filePath = os.path.dirname(__file__)
+    filePath = os.getcwd()
 
     print("读取时间片数据!")
     tp = topo(filePath)
@@ -52,7 +52,7 @@ if __name__ == "__main__":
         all_task.clear()
         print("数据库的接口ip配置等!")
         for db_no in tp.db_data:        # 数据库的接口ip配置等
-            all_task.append(pool.submit(os.system,"sudo ./config/db_conf/db_init.sh {} ".format(db_no)))
+            all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {} ".format(tp.filePath, db_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
 
@@ -80,4 +80,4 @@ if __name__ == "__main__":
 
     print("启动监听指令程序!")
     print(time.time() - start)
-    # ctrl = controller(tp)
+    ctrl = controller(tp)
