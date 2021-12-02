@@ -91,7 +91,7 @@ def __a_slot_diff_links2sh(slot_no, path, links:list):
     
         os.system("sudo chmod +x {}".format(filename))  # 修改权限
 
-def __a_sw_init_slot0sh(sw_no, filename, sw_adj:dict, is_db=False):
+def __a_sw_init_slot2sh(sw_no, filename, sw_adj:dict, is_db=False):
     # 将一个sw初始化写成shell脚本
     with open(filename, 'w+') as file:
         # file.write("ip route flush table main\n".format(sw_no)) # 清空linux的路由表
@@ -151,9 +151,9 @@ def gen_diff_links2sh(tp: topo):
         all_task = []
         for sw_no in tp.data_topos[0]:   
             if(sw_no in tp.db_data):
-                all_task.append(pool.submit(__a_sw_init_slot0sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], True))
+                all_task.append(pool.submit(__a_sw_init_slot2sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], True))
             else:
-                all_task.append(pool.submit(__a_sw_init_slot0sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], False))
+                all_task.append(pool.submit(__a_sw_init_slot2sh, sw_no, "{}/config/links_shell/s{}_init_slot0.sh".format(tp.filePath, sw_no), tp.data_topos[0][sw_no], False))
         wait(all_task, return_when=ALL_COMPLETED)
 
     # 时间片切换的链路修改

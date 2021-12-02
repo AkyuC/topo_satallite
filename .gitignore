@@ -2,3 +2,4 @@
 /config/sw_route_file
 */__pycache__
 /config/db_conf/dyno_*.log
+/config/sw_recover

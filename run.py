@@ -31,6 +31,7 @@ if __name__ == "__main__":
 
     print("第0个时间片的拓扑链路生成，并且放入对应的docker容器")
     os.system("sudo {}/config/links_shell/links_init_slot0.sh".format(tp.filePath))
+    print(time.time() - start)
 
     print("在所有的ovs容器中启动对应的ovs交换机，将端口绑定到ovs交换机上!")
     with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
