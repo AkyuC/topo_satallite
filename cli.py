@@ -29,11 +29,10 @@ class cli:
             try:
                 print(">-- Available commands:\n"
                     ">-- 0.run topo\n"
-                    ">-- 1.run service(iperf)\n"
-                    ">-- 2.stop service(iperf)\n"
-                    ">-- 3.sw shutdown + sw number(0 ~ 65)\n"
-                    ">-- 4.topo recover\n"
-                    ">-- 5.stop all and exit\n"
+                    ">-- 1.run service(sw1, sw2, time)(random_sw1, random_sw2, 10s)\n"
+                    ">-- 2.sw shutdown + sw number(0 ~ 65)\n"
+                    ">-- 3.topo recover\n"
+                    ">-- 4.stop all and exit\n"
                     )
 
                 command = input(">Input commands:\n").strip()

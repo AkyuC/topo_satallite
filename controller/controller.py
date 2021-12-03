@@ -27,10 +27,9 @@ def load_command():
     # cli命令
     const_command.cli_run_topo = 0
     const_command.cli_run_iperf = 1
-    const_command.cli_stop_iperf = 2
-    const_command.cli_sw_shutdown = 3
-    const_command.cli_recover = 4
-    const_command.cli_stop_all = 5
+    const_command.cli_sw_shutdown = 2
+    const_command.cli_recover = 3
+    const_command.cli_stop_all = 4
     # timer定时器切换命令
     const_command.timer_diff = 6
     const_command.timer_rt_diff = 7
