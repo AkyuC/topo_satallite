@@ -42,7 +42,7 @@ class cli:
                     continue
                 # 写入消息队列中
                 self.socket.sent_msg(command)
-                if(int(command[0]) == 5):
+                if(int(command[0]) == 4):
                     self.stop()
                     break
                 

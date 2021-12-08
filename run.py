@@ -73,7 +73,7 @@ if __name__ == "__main__":
                 .format(s=sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
-        time.sleep(5)
+        time.sleep(5)   # 由于仿真运行时延的原因，需要等几秒
         for sw_no in tp.data_topos[0]:  
             all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
                 .format(s=sw_no, ip=sw_no+1, slot=0)))

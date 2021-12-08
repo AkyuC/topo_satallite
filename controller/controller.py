@@ -44,11 +44,11 @@ def update_slot_diff_links2sh(slot_no, sw_fail:set, links:list, filePath):
  
 def sw_disable(sw_no, slot_no, tp:topo):
     # 使卫星交换机失效
-    command = "sudo docker exec -t s{s} ovs-vsctl del-br s{s};sudo docker stop s{s};".format(s=sw_no)
+    command = "sudo docker exec -t s{s} ovs-vsctl del-br s{s};sudo docker stop s{s} > /dev/null;".format(s=sw_no)
     for sw_adj in tp.data_topos[slot_no][sw_no]:
-        command += "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\" > /dev/null ;".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
+        command += "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\" ;".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
     if(sw_no in tp.db_data):
-        command += "sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh stop\" > /dev/null ;".format(sw_no)
+        command += "sudo docker stop db{} > /dev/null;".format(sw_no)
     os.system(command)
 
 def run_shell(file):
@@ -116,19 +116,28 @@ class controller:
                     wait(all_task, return_when=ALL_COMPLETED)
                 # 更新失效的卫星
                 self.sw_fail = self.sw_fail.union(sw_fail)
+                print("关闭失效卫星{}结束\r".format(sw_fail))
 
             elif(command[0] == const_command.cli_recover):
-                print("正在进行链路恢复！\r")
+                print("正在进行链路恢复！slot:{}\r".format(self.slot_now))
                 slot_no = self.slot_now
                 start = time.time()
                 with ThreadPoolExecutor(max_workers=self.tp.num_sw) as pool:
                     all_task = []
                 # 把链路重新恢复
                     if os.path.exists(self.tp.filePath + "/config/sw_recover"):
-                        os.system("rm -rf {}/config/sw_recover".format(self.tp.filePath))
+                        os.system("sudo rm -rf {}/config/sw_recover".format(self.tp.filePath))
                     os.makedirs(self.tp.filePath + "/config/sw_recover")
+                    for db_no in self.tp.db_data:
+                        if db_no not in self.sw_fail:
+                            all_task.append(pool.submit(sw_disable, db_no, slot_no, self.tp)) 
+                    self.sw_fail = self.sw_fail.union(set(self.tp.db_data))
+                    wait(all_task, return_when=ALL_COMPLETED)
+                    all_task.clear()
                     for sw_no in self.sw_fail:   # 开启失效的容器
-                        all_task.append(pool.submit(os.system, "sudo docker start s{} > /dev/null".format(sw_no)))
+                        all_task.append(pool.submit(os.system, "sudo docker start s{}".format(sw_no)))
+                        # if sw_no in self.sw_fail:
+                        #     all_task.append(pool.submit(os.system,"sudo docker start db{};".format(sw_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                     for sw_no in range(self.tp.num_sw):     # 重启ovs
@@ -153,8 +162,12 @@ class controller:
                 # 重新启动数据库
                     for db_no in self.tp.db_data:
                         if db_no in self.sw_fail:
-                            all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {}".format(self.tp.filePath, db_no)))
-                        all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash /home/config/db_conf/db_run.sh start {} {}".format(db_no, db_no, slot_no)))
+                            # all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {}".format(self.tp.filePath, db_no)))
+                            all_task.append(pool.submit(os.system,"sudo docker start db{} > /dev/null; sleep 1s; sudo {}/config/db_conf/db_init.sh {}; sleep 1s; sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh start {} {}\""\
+                                .format(db_no, self.tp.filePath, db_no, db_no, db_no, slot_no)))
+                        else:
+                            all_task.append(pool.submit(os.system,"sudo docker restart db{} > /dev/null; sleep 1s; sudo {}/config/db_conf/db_init.sh {}; sleep 1s; sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh start {} {}\""\
+                                .format(db_no, self.tp.filePath, db_no, db_no, db_no, slot_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                     for db_no in self.tp.db_data:
@@ -167,7 +180,7 @@ class controller:
                             .format(s=sw_no)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
-                    sleep(5)
+                    sleep(5)    # 由于仿真运行时延的原因，需要等几秒
                     for sw_no in range(self.tp.num_sw):  
                         all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
                             .format(s=sw_no, ip=sw_no+1, slot=slot_no)))
@@ -179,7 +192,6 @@ class controller:
 
             elif(command[0] == const_command.cli_stop_all):
                 self.stop()
-                flowbuilder.stop()
                 return
 
             elif(command[0] ==  const_command.timer_diff):

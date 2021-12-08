@@ -37,22 +37,11 @@ start_redis(){
 }
 
 stop_redis(){
-if [ ! -f $PIDFILE ]
-    then
-            echo "$PIDFILE does not exist, process is not running"
-    else
-            PID=$(cat $REDIS_PIDFILE)
-            $CLIREDIS_EXEC -h $REDIS_IP -p $REDISPORT shutdown
-            while [ -x /proc/${PID} ]
-            do
-                sleep 1
-            done
-    fi
-    killall -9 redis-cli
+    ps -ef | grep redis-server | grep -v grep | cut -c 8-16 | xargs kill -9
 }
 
 stop_dynomite(){
-    killall -9 dynomite
+    ps -ef | grep dynomite | grep -v grep | cut -c 8-16 | xargs kill -9
 }
 
 start_dynomite(){
@@ -68,7 +57,7 @@ if [ $id -eq 13 ]
 }
 
 stop_monitor(){
-    killall -9 monitor_new
+    ps -ef | grep monitor_new | grep -v grep | cut -c 8-16 | xargs kill -9
 }
 
 restart_redis(){
@@ -86,7 +75,6 @@ restart_redis(){
             cp /home/config/db_conf/dump.rdb.back /var/lib/redis/dump.rdb
             $REDIS_EXEC $REDIS_CONF             
     fi
-    killall -9 redis-cli
 }
  
 case "$1" in
@@ -103,7 +91,8 @@ case "$1" in
     restart)
         stop_monitor
         stop_dynomite
-        restart_redis
+        stop_redis
+        start_redis
         start_dynomite
         start_monitor
         ;;
