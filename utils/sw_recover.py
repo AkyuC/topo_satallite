@@ -9,9 +9,9 @@ def sw_rec_ovs(sw_no, is_delsw, is_db):
         command += "sudo docker exec -it s{} /bin/bash -c \"/usr/src/openmul/mul.sh stop > /dev/null;ovs-vsctl del-br s{};\";".format(sw_no, sw_no)
         reconn_ovs = 0
     if(is_db is True):
-        command +="sudo docker exec -it s{} /bin/bash -c \"/home/config/sw_rec_add_ovs.sh {} {} {}\";".format(sw_no, sw_no, 1, reconn_ovs)
+        command +="sudo docker exec -it s{} /bin/bash -c \"/home/config/sw_rec_add_ovs.sh {} {} {} > /dev/null\";".format(sw_no, sw_no, 1, reconn_ovs)
     else:
-        command += "sudo docker exec -it s{} /bin/bash -c \"/home/config/sw_rec_add_ovs.sh {} {} {}\";".format(sw_no, sw_no, 0, reconn_ovs)
+        command += "sudo docker exec -it s{} /bin/bash -c \"/home/config/sw_rec_add_ovs.sh {} {} {} > /dev/null\";".format(sw_no, sw_no, 0, reconn_ovs)
     os.system(command)
 
 def sw_rec_create_veth(sw_no, slot_no, sw_fail: set, tp: topo):

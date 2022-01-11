@@ -42,13 +42,16 @@ def update_slot_diff_links2sh(slot_no, sw_fail:set, links:list, filePath):
                 del links[sw_no][index]
     __a_slot_diff_links2sh(slot_no, filePath + "/config/links_shell/" , links)
  
-def sw_disable(sw_no, slot_no, tp:topo):
+def sw_disable(sw_no, slot_no, sw_fail, tp:topo):
     # 使卫星交换机失效
-    command = "sudo docker exec -t s{s} ovs-vsctl del-br s{s};sudo docker stop s{s} > /dev/null;".format(s=sw_no)
+    command = "sudo docker exec -it s{s} ovs-vsctl del-br s{s};".format(s=sw_no)
     for sw_adj in tp.data_topos[slot_no][sw_no]:
-        command += "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\" ;".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
+        if sw_adj in sw_fail:
+            continue
+        command += "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\";".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
     if(sw_no in tp.db_data):
         command += "sudo docker stop db{} > /dev/null;".format(sw_no)
+    command += "sudo docker stop s{s} > /dev/null;".format(s=sw_no)
     os.system(command)
 
 def run_shell(file):
@@ -72,7 +75,7 @@ class controller:
         self.filePath = tp.filePath
         # 加载时间片序列
         self.topotimer = timer(self.filePath + '/config/timeslot/timefile', 0, const_command.timer_diff)
-        self.rttimer = timer(self.filePath + '/config/timeslot/timefile', 8, const_command.timer_rt_diff)
+        self.rttimer = timer(self.filePath + '/config/timeslot/timefile', 10, const_command.timer_rt_diff)
         # 接收命令的套接字
         self.socket = UdpServer()
         # 目前实效的卫星
@@ -110,7 +113,7 @@ class controller:
                 with ThreadPoolExecutor(max_workers=self.tp.num_slot) as pool:
                     all_task = []
                     for sw_no in sw_fail:
-                        all_task.append(pool.submit(sw_disable, sw_no, self.slot_now, self.tp)) 
+                        all_task.append(pool.submit(sw_disable, sw_no, self.slot_now, self.sw_fail.union(sw_fail), self.tp)) 
                     wait(all_task, return_when=ALL_COMPLETED)                       
                 # 更新运行的脚本
                     for slot_no in range(self.tp.num_slot):
@@ -123,7 +126,6 @@ class controller:
             elif(command[0] == const_command.cli_recover):
                 # 设置标志
                 self.is_recover = True
-                self.tp_recover()
 
             elif(command[0] == const_command.cli_stop_all):
                 self.stop()
@@ -131,31 +133,32 @@ class controller:
 
             elif(command[0] ==  const_command.timer_diff):
                 slot_no = command[1]   # 获取切换的时间片序号
-                print("时间片切换，slot_no: {} -> {}\r".format(slot_no, slot_no+1))
+                print("时间片切换，slot_no: {} -> {}\r".format(slot_no, (slot_no + 1)%self.tp.num_slot))
                 with ThreadPoolExecutor(max_workers=self.tp.num_sw) as pool:
                     all_task = []
                     for ctrl_no in range(self.tp.num_sw):
                         if ctrl_no not in self.sw_fail:   # 失效的不告知
-                            all_task.append(pool.submit(ctrl_get_slot_change, slot_no+1, ctrl_no))
+                            all_task.append(pool.submit(ctrl_get_slot_change, (slot_no + 1)%self.tp.num_slot, ctrl_no))
                     wait(all_task, return_when=ALL_COMPLETED)
                     all_task.clear()
                 # 链路修改
-                    run_shell("{}/config/links_shell/links_add_slot{}.sh".format(self.tp.filePath, slot_no+1))
+                    run_shell("{}/config/links_shell/links_add_slot{}.sh".format(self.tp.filePath, (slot_no + 1)%self.tp.num_slot))
                     for sw_no in range(self.tp.num_sw):
                         if sw_no not in self.sw_fail:   # 失效的不运行
-                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, slot_no+1)))
+                            all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, (slot_no + 1)%self.tp.num_slot)))
                     wait(all_task, return_when=ALL_COMPLETED)
-                print("时间片切换，slot_no: {} -> {}，结束\r".format(slot_no, slot_no+1))
-                self.slot_now = slot_no+1
+                print("时间片切换，slot_no: {} -> {}，结束\r".format(slot_no, (slot_no + 1)%self.tp.num_slot))
+                self.slot_now = (slot_no + 1)%self.tp.num_slot
                 # 恢复
                 if(self.is_recover):
+                    sleep(3)    # 由于仿真运行时延的原因，需要等几秒
                     self.tp_recover()
                     self.is_recover = False
 
             elif(command[0] ==  const_command.timer_rt_diff):
                 slot_no = command[1]   # 获取切换的时间片，提前调整路由
                 # 告知所有的数据库
-                print("调整路由, slot_no； {} -> {}\r".format(slot_no, slot_no+1))
+                print("调整路由, slot_no； {} -> {}\r".format(slot_no, (slot_no + 1)%self.tp.num_slot))
                 with ThreadPoolExecutor(max_workers=self.tp.num_db) as pool:
                     all_task = []
                     for db_no in self.tp.db_data:
@@ -176,14 +179,12 @@ class controller:
             os.makedirs(self.tp.filePath + "/config/sw_recover")
             for db_no in self.tp.db_data:
                 if db_no not in self.sw_fail:
-                    all_task.append(pool.submit(sw_disable, db_no, slot_no, self.tp)) 
+                    all_task.append(pool.submit(sw_disable, db_no, slot_no, self.sw_fail.union(set(self.tp.db_data)), self.tp)) 
             self.sw_fail = self.sw_fail.union(set(self.tp.db_data))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
             for sw_no in self.sw_fail:   # 开启失效的容器
                 all_task.append(pool.submit(os.system, "sudo docker start s{} > /dev/null".format(sw_no)))
-                # if sw_no in self.sw_fail:
-                #     all_task.append(pool.submit(os.system,"sudo docker start db{};".format(sw_no)))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
             for sw_no in range(self.tp.num_sw):     # 重启ovs
@@ -199,15 +200,9 @@ class controller:
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
             gen_diff_links2sh(self.tp_back)
+            print("链路恢复完成！{}\r".format(time.time() - start))
+            print("开始模式切换！\r")
         # 加载控制通道路由
-            # for sw_no in range(self.tp.num_sw):  # ct-db的路由读取
-            #     all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_ct2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
-            # wait(all_task, return_when=ALL_COMPLETED)
-            # all_task.clear()
-            # for db_no in self.tp.db_data:        # db-db的路由读取
-            #     all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_db2db_s{}_slot{}".format(db_no, db_no, db_no, slot_no)))
-            # wait(all_task, return_when=ALL_COMPLETED)
-            # all_task.clear()
             for sw_no in self.tp.data_topos[0]:  # ct-db的路由读取
                 all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_ct2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
             wait(all_task, return_when=ALL_COMPLETED)
@@ -246,7 +241,7 @@ class controller:
         # topo数据回退
         self.tp = copy.deepcopy(self.tp_back)
         self.sw_fail.clear()
-        print("链路恢复完成！{}\r".format(time.time() - start))
+        print("模式切换完成！{}\r".format(time.time() - start))
     
     def start(self):
         # 开启线程
@@ -257,5 +252,5 @@ class controller:
         self.started = False
         self.topotimer.stop()
         self.rttimer.stop()
-        os.system("sudo docker stop $(sudo docker ps -a -q)")
-        os.system("sudo docker rm $(sudo docker ps -a -q)")
+        os.system("stty -raw; sudo docker stop $(sudo docker ps -a -q)")
+        os.system("stty -raw; sudo docker rm $(sudo docker ps -a -q)")

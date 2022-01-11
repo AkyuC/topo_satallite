@@ -81,4 +81,4 @@ if __name__ == "__main__":
 
     print("启动监听指令程序!\r")
     print(str(time.time() - start)+'\r')
-    ctrl = controller(tp)
+    # ctrl = controller(tp)

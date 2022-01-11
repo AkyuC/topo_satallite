@@ -20,7 +20,7 @@ REDIS_IP="192.168.68.$ip"
 
 #dynomite
 #
-DYNOMITE_EXEC=/usr/sbin/dynomite
+DYNOMITE_EXEC=/home/dynomite/src/dynomite
 #
 DYNOMITE_CONF="/home/config/db_conf/dyno_$id.yml"
 #
