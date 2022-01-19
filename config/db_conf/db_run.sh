@@ -3,6 +3,7 @@
 
 id=$2
 slot_no=$3
+ip_recover=$4
 ip=`expr $id + 1`
 
 #redis
@@ -76,6 +77,12 @@ restart_redis(){
             $REDIS_EXEC $REDIS_CONF             
     fi
 }
+
+redis_recover(){
+	$CLIREDIS_EXEC -h $REDIS_IP -p $REDISPORT slaveof 192.168.68.$ip_recover 6379
+	sleep 5s
+	$CLIREDIS_EXEC -h $REDIS_IP -p $REDISPORT slaveof NO ONE
+}
  
 case "$1" in
     start)
@@ -95,6 +102,9 @@ case "$1" in
         start_redis
         start_dynomite
         start_monitor
+        ;;
+    redis_recover)
+        redis_recover
         ;;
     *) echo "unknown command"
         ;;

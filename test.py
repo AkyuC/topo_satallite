@@ -40,7 +40,11 @@ if __name__ == "__main__":
                 all_task.append(pool.submit(db_get_slot_change, slot_no, db_no))
             wait(all_task, return_when=ALL_COMPLETED)
         
-        time.sleep(20)
+        time.sleep(30)
+
+        print("\n\r")
+        os.system("sudo python3 ./db2db_ping_test.py")
+        print("\n\r")
 
         print("时间片切换，slot_no: {} -> {}\r".format(slot_no, (slot_no + 1)%tp.num_slot))
         with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
@@ -54,3 +58,4 @@ if __name__ == "__main__":
             for sw_no in tp.data_topos[0]:
                 all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, (slot_no + 1)%tp.num_slot)))
             wait(all_task, return_when=ALL_COMPLETED)
+        time.sleep(5)

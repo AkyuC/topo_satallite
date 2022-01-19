@@ -4,14 +4,25 @@ from topo.topo import topo
 from topo.route import route
 
 
-def __a_db2db_rt2sh(filename, rt:list):
+def __a_db2db_rt2sh(sw_no, filename, rt:list):
     # 将一个sw上面的有关db-db的流表项写成shell文件
     with open(filename, 'w+') as file:
         for iu in rt:
-            file.write("table=0,priority=100,ip,nw_src=192.168.68.{},nw_dst=192.168.68.{},action=output:{}\n"\
-                .format(iu[0]+1, iu[1]+1, iu[2]))
-            file.write("table=0,priority=100,arp,arp_spa=192.168.68.{},arp_tpa=192.168.68.{},action=output:{}\n"\
-                .format(iu[0]+1, iu[1]+1, iu[2]))
+            if len(iu) == 3:
+                file.write("table=0,priority=100,ip,nw_src=192.168.68.{},nw_dst=192.168.68.{},action=output:{}\n"\
+                    .format(iu[0]+1, iu[1]+1, iu[2]))
+                file.write("table=0,priority=100,arp,arp_spa=192.168.68.{},arp_tpa=192.168.68.{},action=output:{}\n"\
+                    .format(iu[0]+1, iu[1]+1, iu[2]))
+            elif iu[0] == sw_no:
+                file.write("table=0,priority=100,ip,nw_src=192.168.68.{},nw_dst=192.168.68.{},action=output:{},{}\n"\
+                    .format(iu[0]+1, iu[1]+1, iu[2], iu[3]))
+                file.write("table=0,priority=100,arp,arp_spa=192.168.68.{},arp_tpa=192.168.68.{},action=output:{},{}\n"\
+                    .format(iu[0]+1, iu[1]+1, iu[2], iu[3]))
+            else:
+                file.write("table=0,priority=100,in_port={},ip,nw_src=192.168.68.{},nw_dst=192.168.68.{},action=output:{}\n"\
+                    .format(iu[3], iu[0]+1, iu[1]+1, iu[2]))
+                file.write("table=0,priority=100,in_port={},arp,arp_spa=192.168.68.{},arp_tpa=192.168.68.{},action=output:{}\n"\
+                    .format(iu[3], iu[0]+1, iu[1]+1, iu[2]))
 
 def __a_sw2db_rt2sh(filename, rt:list):
     # 将一个sw上面的有关ct-db的流表项写成shell文件
@@ -43,7 +54,7 @@ def gen_route2sh(tp: topo):
             # db-db的控制通道路由生成shell脚本
             all_task.clear()
             for sw_no in tp.data_topos[0]:
-                all_task.append(pool.submit(__a_db2db_rt2sh, "{}/config/sw_route_file/fl_db2db_s{}_slot{}".format(tp.filePath, sw_no, slot_no), db2db_rt[sw_no]))
+                all_task.append(pool.submit(__a_db2db_rt2sh, sw_no, "{}/config/sw_route_file/fl_db2db_s{}_slot{}".format(tp.filePath, sw_no, slot_no), db2db_rt[sw_no]))
             wait(all_task, return_when=ALL_COMPLETED)
             
             # 控制器和数据库之间

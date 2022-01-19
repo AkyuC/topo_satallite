@@ -15,9 +15,6 @@ if __name__ == "__main__":
 
     print("读取时间片数据!\r")
     tp = topo(filePath)
-    
-    print("创建容器!\r")
-    os.system("sudo python3 {}/create_docker.py".format(filePath))
 
     # 是否需要生成配置文件，如果需要，执行命令时就输入参数。如python3 run.py 1
     # if len(sys.argv) > 0:
@@ -25,6 +22,9 @@ if __name__ == "__main__":
     gen_route2sh(tp)
     print("时间片链路修改脚本生成!\r")
     gen_diff_links2sh(tp)
+
+    print("创建容器!\r")
+    os.system("sudo python3 {}/create_docker.py".format(filePath))
 
     print("配置文件复制进入容器当中!\r")
     cp_sh2docker(tp)
@@ -51,6 +51,7 @@ if __name__ == "__main__":
             all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_db2db_s{}_slot0".format(sw_no, sw_no, sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
+        
         print("数据库的接口ip配置等!\r")
         for db_no in tp.db_data:        # 数据库的接口ip配置等
             all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {} ".format(tp.filePath, db_no)))

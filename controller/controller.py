@@ -28,11 +28,13 @@ def load_command():
     const_command.cli_run_topo = 0
     const_command.cli_run_iperf = 1
     const_command.cli_sw_shutdown = 2
-    const_command.cli_recover = 3
-    const_command.cli_stop_all = 4
+    const_command.cli_db_shutdown = 3
+    const_command.cli_db_recover = 4
+    const_command.cli_recover = 5
+    const_command.cli_stop_all = 6
     # timer定时器切换命令
-    const_command.timer_diff = 6
-    const_command.timer_rt_diff = 7
+    const_command.timer_diff = 7
+    const_command.timer_rt_diff = 8
 
 def update_slot_diff_links2sh(slot_no, sw_fail:set, links:list, filePath):
     # 由于卫星失效，所有需要对原来链路修改的脚本进行更新
@@ -84,7 +86,10 @@ class controller:
         self.slot_now = 0
         self.start()
         # 是否进行恢复
-        self.is_recover = False
+        self.is_tp_recover = False
+        self.is_db_recover = False
+        self.db_disable = 0
+        self.db_movement = 0
 
     def __do_start(self):
         # 控制器从消息队列中获取指令，并且执行对应的函数
@@ -122,10 +127,17 @@ class controller:
                 # 更新失效的卫星
                 self.sw_fail = self.sw_fail.union(sw_fail)
                 print("关闭失效卫星{}结束\r".format(sw_fail))
+            
+            elif(command[0] == const_command.cli_db_shutdown):
+                # 只关闭数据库docker
+                command = "sudo docker stop db{}\n".format(command[1])
+                os.system(command)
 
-            elif(command[0] == const_command.cli_recover):
+            elif(command[0] == const_command.cli_db_recover):
                 # 设置标志
-                self.is_recover = True
+                self.is_db_recover = True
+                self.db_disable = command[1]
+                self.db_movement = command[2] 
 
             elif(command[0] == const_command.cli_stop_all):
                 self.stop()
@@ -150,10 +162,23 @@ class controller:
                 print("时间片切换，slot_no: {} -> {}，结束\r".format(slot_no, (slot_no + 1)%self.tp.num_slot))
                 self.slot_now = (slot_no + 1)%self.tp.num_slot
                 # 恢复
-                if(self.is_recover):
-                    sleep(3)    # 由于仿真运行时延的原因，需要等几秒
+                if(self.is_tp_recover):
+                    sleep(3)
                     self.tp_recover()
-                    self.is_recover = False
+                    self.is_tp_recover = False
+                elif(self.is_db_recover):
+                    sleep(3)
+                    db_disable = self.db_disable
+                    db_movement = self.db_movement
+                    slot_no = self.slot_now
+                    command = "sudo docker exec -it s{sw} /bin/bash -c \"ovs-vsctl del-port s{sw}-db{sw}\";\n".format(sw=db_disable)
+                    os.system(command)
+                    command = "sudo docker start db{db} > /dev/null; sleep 1s; sudo docker exec -it db{db} /bin/bash -c \"iptables -I INPUT -s 192.168.66.0/24 -j DROP\"; sudo {path}/config/db_conf/db_init.sh {db}; sleep 1s; sudo docker exec -it db{db} /bin/bash -c \"/home/config/db_conf/db_run.sh start {db} {slot}\""\
+                            .format(db=db_disable, path=self.tp.filePath, slot=slot_no)
+                    os.system(command)
+                    command = "sudo docker exec -it db{db} /bin/bash -c \"/home/config/db_conf/db_run.sh redis_recover {db} 0 {db_r}; iptables -D INPUT 1\";".format(db=db_disable, db_r=db_movement+1)
+                    os.system(command)
+                    self.is_db_recover = False
 
             elif(command[0] ==  const_command.timer_rt_diff):
                 slot_no = command[1]   # 获取切换的时间片，提前调整路由

@@ -14,10 +14,20 @@ class route:
                     continue
                 db2 = int(line_list[1])
                 for i in range(len(line_list)-2):   # 条目读取
+                    port_add = False
                     flow = int(line_list[i+2])
                     sw = int(flow/1000)
                     port = flow - sw*1000
-                    data[sw].append((db1, db2, port+1000))  # 1000为端口的偏移值
+                    if i == 0:
+                        for f in data[sw]:
+                            if f[0] == db1 and f[1] == db2:
+                                f.append(port+1000)
+                                port_add = True
+                                break
+                        if not port_add:
+                            data[sw].append([db1, db2, port+1000])  # 1000为端口的偏移值
+                    else:
+                        data[sw].append([db1, db2, port+1000, int(int(line_list[i+1])/1000)+1000])  # 1000为端口的偏移值
         return data
     
     def load_ctrl2db(sw_num, filename:str):

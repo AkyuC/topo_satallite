@@ -31,8 +31,10 @@ class cli:
                     ">-- 0.run topo\n"
                     ">-- 1.run service(sw1, sw2, time)(random_sw1, random_sw2, 10s)\n"
                     ">-- 2.sw shutdown + sw number(0 ~ 65)\n"
-                    ">-- 3.topo recover\n"
-                    ">-- 4.stop all and exit\n"
+                    ">-- 3.db shutdown but sw is online (13, 16, 31, 46, 50, 54)\n"
+                    ">-- 4.db recover, two db num(13, 16, 31, 46, 50, 54)\n"
+                    ">-- 5.topo recover\n"
+                    ">-- 6.stop all and exit\n"
                     )
 
                 command = input(">Input commands:\n").strip()
@@ -42,7 +44,7 @@ class cli:
                     continue
                 # 写入消息队列中
                 self.socket.sent_msg(command)
-                if(int(command[0]) == 4):
+                if(int(command[0]) == 6):
                     self.stop()
                     break
                 
