@@ -1,5 +1,6 @@
 import os, sys
 import time
+from turtle import clear
 from topo.topo import topo
 from utils.genConfig import gen_diff_links2sh, gen_route2sh
 from utils.cpFile import cp_sh2docker
@@ -40,11 +41,11 @@ if __name__ == "__main__":
                 all_task.append(pool.submit(db_get_slot_change, slot_no, db_no))
             wait(all_task, return_when=ALL_COMPLETED)
         
-        time.sleep(30)
+        time.sleep(80)
 
-        print("\n\r")
-        os.system("sudo python3 ./db2db_ping_test.py")
-        print("\n\r")
+        # print("\n\r")
+        # os.system("sudo python3 ./db2db_ping_test.py")
+        # print("\n\r")
 
         print("时间片切换，slot_no: {} -> {}\r".format(slot_no, (slot_no + 1)%tp.num_slot))
         with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
@@ -53,7 +54,8 @@ if __name__ == "__main__":
                 all_task.append(pool.submit(ctrl_get_slot_change, (slot_no + 1)%tp.num_slot, ctrl_no))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
-        # 链路修改
+
+            # 链路修改
             run_shell("{}/config/links_shell/links_add_slot{}.sh".format(tp.filePath, (slot_no + 1)%tp.num_slot))
             for sw_no in tp.data_topos[0]:
                 all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, (slot_no + 1)%tp.num_slot)))

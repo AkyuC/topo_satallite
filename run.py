@@ -16,8 +16,6 @@ if __name__ == "__main__":
     print("读取时间片数据!\r")
     tp = topo(filePath)
 
-    # 是否需要生成配置文件，如果需要，执行命令时就输入参数。如python3 run.py 1
-    # if len(sys.argv) > 0:
     print("控制通道路由生成，并且写成脚本!\r")
     gen_route2sh(tp)
     print("时间片链路修改脚本生成!\r")
@@ -82,4 +80,4 @@ if __name__ == "__main__":
 
     print("启动监听指令程序!\r")
     print(str(time.time() - start)+'\r')
-    # ctrl = controller(tp)
+    ctrl = controller(tp)
