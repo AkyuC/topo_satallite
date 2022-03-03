@@ -3,3 +3,4 @@
 */__pycache__
 /config/db_conf/dyno_*.log
 /config/sw_recover
+/config/mul_statistic_log

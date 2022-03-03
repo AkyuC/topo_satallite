@@ -45,7 +45,7 @@ def gen_route2sh(tp: topo):
     if not os.path.exists(tp.filePath + "/config/sw_route_file"):
         os.makedirs(tp.filePath + "/config/sw_route_file")
     
-    with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
+    with ThreadPoolExecutor(max_workers=32) as pool:
         all_task = []
         for slot_no in tp.data_topos:
             # 生成脚本
@@ -75,11 +75,13 @@ def __a_slot_diff_links2sh(slot_no, path, links:list):
                     if link[1]>link[2]:
                         p1 = "s{}-s{}".format(link[1],link[2])
                         p2 = "s{}-s{}".format(link[2],link[1])
-                        file.write("sudo ip link add {} type veth peer name {}\n".format(p1, p2))
+                        file.write("sudo ip link add {} type veth peer name {} > /dev/null\n".format(p1, p2))
                         file.write("sudo ip link set dev {} name {} netns $(sudo docker inspect -f '{{{{.State.Pid}}}}' s{}) up > /dev/null\n"\
                             .format(p1, p1, link[1]))
                         file.write("sudo ip link set dev {} name {} netns $(sudo docker inspect -f '{{{{.State.Pid}}}}' s{}) up > /dev/null\n"\
                             .format(p2, p2, link[2]))
+                        # file.write("sudo docker exec -it s{} ip link set {} up > /dev/null\n".format(link[1], p1))
+                        # file.write("sudo docker exec -it s{} ip link set {} up > /dev/null\n".format(link[2], p2))
     
     os.system("sudo chmod +x {}".format(filename))  # 修改权限
 
@@ -153,13 +155,15 @@ def gen_diff_links2sh(tp: topo):
                 if sw1 > sw2:
                     p1 = "s{}-s{}".format(sw1,sw2)
                     p2 = "s{}-s{}".format(sw2,sw1)
-                    file.write("sudo ip link add {} type veth peer name {}\n".format(p1, p2))
+                    file.write("sudo ip link add {} type veth peer name {} > /dev/null\n".format(p1, p2))
                     file.write("sudo ip link set dev {} name {} netns $(sudo docker inspect -f '{{{{.State.Pid}}}}' s{}) up\n".format(p1, p1, sw1))
                     file.write("sudo ip link set dev {} name {} netns $(sudo docker inspect -f '{{{{.State.Pid}}}}' s{}) up\n".format(p2, p2, sw2))
+                    # file.write("sudo docker exec -it s{} ip link set {} up > /dev/null\n".format(sw1, p1))
+                    # file.write("sudo docker exec -it s{} ip link set {} up > /dev/null\n".format(sw2, p2))
             
     os.system("sudo chmod +x {}".format(tp.filePath + "/config/links_shell/links_init_slot0.sh"))  # 修改权限
     # sw的ovs初始化，创建ovs交换机等等
-    with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
+    with ThreadPoolExecutor(max_workers=32) as pool:
         all_task = []
         for sw_no in tp.data_topos[0]:   
             if(sw_no in tp.db_data):

@@ -32,7 +32,7 @@ if __name__ == "__main__":
     print(str(time.time() - start)+'\r')
 
     print("在所有的ovs容器中启动对应的ovs交换机，将端口绑定到ovs交换机上!\r")
-    with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
+    with ThreadPoolExecutor(max_workers=32) as pool:
         all_task = []
         print("每个sw容器初始化执行!\r")
         for sw_no in tp.data_topos[0]:   
@@ -65,6 +65,7 @@ if __name__ == "__main__":
             all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_no, db_no+1)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
+        os.system("sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/init_map {} 192.168.68.{} > /dev/null\"".format(13, 0, 14))
 
         print("启动所有的控制器，并且连接到所属的数据库，同时本地的ovs交换机连接到本地的控制器!\r")
         for sw_no in tp.data_topos[0]:  
@@ -74,7 +75,7 @@ if __name__ == "__main__":
         all_task.clear()
         time.sleep(5)   # 由于仿真运行时延的原因，需要等几秒
         for sw_no in tp.data_topos[0]:  
-            all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:192.168.66.{ip}:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
+            all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:127.0.0.1:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
                 .format(s=sw_no, ip=sw_no+1, slot=0)))
         wait(all_task, return_when=ALL_COMPLETED)
 

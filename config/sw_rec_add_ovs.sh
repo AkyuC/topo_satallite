@@ -24,9 +24,9 @@ ovs-ofctl add-flow s$id "table=0,priority=100,arp,nw_dst=192.168.66.$ip action=o
 ovs-ofctl add-flow s$id "table=0,priority=100,ip,nw_dst=192.168.10.1 action=drop"
 ovs-ofctl add-flow s$id "table=0,priority=100,arp,nw_dst=192.168.10.1 action=drop"
 nohup iperf -s -u > /dev/null 2>&1 &
-if [ $2 -eq 1 ]
-then
-    dbid=`expr $id + 2000`
-    ovs-ofctl add-flow s$id "table=0,priority=100,ip,nw_dst=192.168.68.$ip action=output:$dbid"
-    ovs-ofctl add-flow s$id "table=0,priority=100,arp,nw_dst=192.168.68.$ip action=output:$dbid"
-fi
+# if [ $2 -eq 1 ]
+# then
+#     dbid=`expr $id + 2000`
+#     ovs-ofctl add-flow s$id "table=0,priority=100,ip,nw_dst=192.168.68.$ip action=output:$dbid"
+#     ovs-ofctl add-flow s$id "table=0,priority=100,arp,nw_dst=192.168.68.$ip action=output:$dbid"
+# fi

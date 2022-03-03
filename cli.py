@@ -32,11 +32,12 @@ class cli:
                     ">-- 1.run service(sw1, sw2, time)(random_sw1, random_sw2, 10s)\n"
                     ">-- 2.sw shutdown, sw number(0 ~ 65)\n"
                     ">-- 3.failed link, sw1 + sw2\n"
-                    ">-- 4.db shutdown but sw is online (13, 16, 31, 46, 50, 54)\n"
-                    ">-- 5.db recover, db_dst + db_src(13, 16, 31, 46, 50, 54)\n"
-                    ">-- 6.topo recover\n"
-                    ">-- 7.stop all and exit\n"
+                    ">-- 4.recover link, sw1 + sw2\n"
+                    ">-- 5.db shutdown but sw is online (13, 16, 31, 46, 50, 54)\n"
+                    ">-- 6.db recover, db_dst + db_src(13, 16, 31, 46, 50, 54)\n"
+                    ">-- 7.topo recover\n"
                     ">-- 8.show ctrl connect db times\n"
+                    ">-- 9.stop all and exit\n"
                     )
 
                 command = input(">Input commands:\n").strip()
@@ -50,7 +51,7 @@ class cli:
                     continue
                 # 写入消息队列中
                 self.socket.sent_msg(command)
-                if(int(command[0]) == 7):
+                if(int(command[0]) == 9):
                     self.stop()
                     break
                 

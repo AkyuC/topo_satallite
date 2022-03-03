@@ -88,7 +88,6 @@ case "$1" in
     start)
         start_redis
         start_dynomite
-        start_monitor
         ;;
     stop)
         stop_monitor
@@ -101,7 +100,6 @@ case "$1" in
         stop_redis
         start_redis
         start_dynomite
-        start_monitor
         ;;
     redis_recover)
         redis_recover

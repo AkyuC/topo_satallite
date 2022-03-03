@@ -18,7 +18,7 @@ def __cp_a_file2docker_sw(sw_no, filename, name=None):
 
 def cp_sh2docker(tp: topo):
     # 将脚本复制到对应容器的/home目录下
-    with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
+    with ThreadPoolExecutor(max_workers=32) as pool:
         all_task = []
         for sw_no in tp.data_topos[0]:
         # 控制器根据时间片连接数据库的配置文件复制

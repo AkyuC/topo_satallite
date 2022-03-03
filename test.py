@@ -48,7 +48,7 @@ if __name__ == "__main__":
         # print("\n\r")
 
         print("时间片切换，slot_no: {} -> {}\r".format(slot_no, (slot_no + 1)%tp.num_slot))
-        with ThreadPoolExecutor(max_workers=tp.num_sw) as pool:
+        with ThreadPoolExecutor(max_workers=32) as pool:
             all_task = []
             for ctrl_no in tp.data_topos[0]:
                 all_task.append(pool.submit(ctrl_get_slot_change, (slot_no + 1)%tp.num_slot, ctrl_no))
