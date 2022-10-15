@@ -61,11 +61,12 @@ if __name__ == "__main__":
             all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh start {} {}\"".format(db_no, db_no, 0)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
+        time.sleep(5)
+        os.system("sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/init_map {} 192.168.68.{} > /dev/null\"".format(13, 0, 14))
         for db_no in tp.db_data:
-            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_no, db_no+1)))
+            all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/config/db_conf/db{}.log 2>&1 &\"".format(db_no, db_no+1, db_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
-        os.system("sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/init_map {} 192.168.68.{} > /dev/null\"".format(13, 0, 14))
 
         print("启动所有的控制器，并且连接到所属的数据库，同时本地的ovs交换机连接到本地的控制器!\r")
         for sw_no in tp.data_topos[0]:  
@@ -73,12 +74,13 @@ if __name__ == "__main__":
                 .format(s=sw_no)))
         wait(all_task, return_when=ALL_COMPLETED)
         all_task.clear()
-        time.sleep(5)   # 由于仿真运行时延的原因，需要等几秒
+        time.sleep(5)   # 由于仿真运行原因，需要等几秒
         for sw_no in tp.data_topos[0]:  
             all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"echo {slot} > /dev/udp/192.168.66.{ip}/12000\";sudo docker exec s{s} ovs-vsctl set-controller s{s} tcp:127.0.0.1:6653 -- set bridge s{s} other_config:enable-flush=false;sudo docker exec s{s} ovs-vsctl set controller s{s} connection-mode=out-of-band"\
                 .format(s=sw_no, ip=sw_no+1, slot=0)))
         wait(all_task, return_when=ALL_COMPLETED)
 
+    time.sleep(5)   # 由于仿真运行原因，需要等几秒
     print("启动监听指令程序!\r")
     print(str(time.time() - start)+'\r')
     ctrl = controller(tp)

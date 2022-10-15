@@ -80,13 +80,18 @@ def link_add2topo(sw1, sw2, delay):
 def sw_disable(sw_no, slot_no, sw_fail, tp:topo):
     # 使卫星交换机失效
     command = "sudo docker exec -it s{s} ovs-vsctl del-br s{s};".format(s=sw_no)
+    os.system(command)
+    # sleep(0.5)
     for sw_adj in tp.data_topos[slot_no][sw_no]:
         if sw_adj in sw_fail:
             continue
-        command += "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\" > /dev/null;".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
+        command = "sudo docker exec -it s{} /bin/bash -c \"ovs-vsctl del-port s{}-s{};ip link del s{}-s{}\" > /dev/null;".format(sw_adj, sw_adj, sw_no, sw_adj, sw_no)
+        os.system(command)
+        sleep(1)
     if(sw_no in tp.db_data):
-        command += "sudo docker stop db{} > /dev/null;".format(sw_no)
-    command += "sudo docker stop s{s} > /dev/null;".format(s=sw_no)
+        command = "sudo docker stop db{} > /dev/null;".format(sw_no)
+        os.system(command)
+    command = "sudo docker stop s{s} > /dev/null;".format(s=sw_no)
     os.system(command)
 
 def run_shell(file):
@@ -121,12 +126,14 @@ class controller:
         self.link_fail = set()
         # 现在的时间片序号
         self.slot_now = 0
-        self.start()
+        
         # 是否进行恢复
         self.is_tp_recover = False
         self.is_db_recover = False
         self.db_disable = 0
         self.db_movement = 0
+
+        self.start()
 
     def __do_start(self):
         # 控制器从消息队列中获取指令，并且执行对应的函数
@@ -211,7 +218,7 @@ class controller:
                 if sw2 in self.tp_back.data_topos[slot_no][sw1] and sw1 not in self.sw_fail and sw2 not in self.sw_fail:
                     print("恢复链路sw{}-sw{}\r".format(sw1, sw2))
                     with ThreadPoolExecutor(max_workers=32+1) as pool:
-                        all_task = []                     
+                        all_task = []
                         all_task.append(pool.submit(link_add2topo, sw1, sw2, self.tp_back.data_topos[slot_no][sw1][sw2]))
                     # 更新运行的脚本
                         for slot_no in range(self.tp.num_slot):
@@ -269,7 +276,7 @@ class controller:
                     wait(all_task, return_when=ALL_COMPLETED)
                 
                 if(self.is_db_recover):
-                    sleep(20)
+                    sleep(10)
                     db_disable = self.db_disable
                     db_movement = self.db_movement
                     print("从db{}中拉取数据到db{}\r".format(db_movement, db_disable))
@@ -279,27 +286,16 @@ class controller:
                     command = "sudo docker start db{db} > /dev/null; sleep 1s; sudo docker exec -it db{db} /bin/bash -c \"iptables -I INPUT -s 192.168.66.0/24 -j DROP\"; sudo {path}/config/db_conf/db_init.sh {db}; sleep 1s; sudo docker exec -it db{db} /bin/bash -c \"/home/config/db_conf/db_run.sh start {db} {slot}\""\
                             .format(db=db_disable, path=self.tp.filePath, slot=slot_no)
                     os.system(command)
-                    command = "sudo docker exec -it db{db} /bin/bash -c \"/home/config/db_conf/db_run.sh redis_recover {db} 0 {db_r}; iptables -D INPUT 1; rm /home/db.log; sleep 1s;\";".format(db=db_disable, db_r=db_movement+1)
+                    command = "sudo docker exec -it db{db} /bin/bash -c \"/home/config/db_conf/db_run.sh redis_recover {db} 0 {db_r}; iptables -D INPUT 1; rm /home/config/db_conf/db{db}.log; sleep 1s;\";".format(db=db_disable, db_r=db_movement+1)
                     os.system(command)
-                    # os.system("sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_disable, db_disable+1))
+                    # os.system("sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/config/db_conf/db{}.log 2>&1 &\"".format(db_disable, db_disable+1, db_disable))
                     all_task = []
                     with ThreadPoolExecutor(max_workers=1) as pool:
-                        all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_disable, db_disable+1)))
+                        all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/config/db_conf/db{}.log 2>&1 &\"".format(db_disable, db_disable+1, db_disable)))
                     wait(all_task, return_when=ALL_COMPLETED)
                     self.is_db_recover = False
                     self.db_fail.remove(db_disable)
                     print("从db{}中拉取数据到db{} end\r".format(db_movement, db_disable))
-
-            # elif(command[0] ==  const_command.timer_rt_diff):
-            #     slot_no = command[1]   # 获取切换的时间片，提前调整路由
-            #     # 告知所有的数据库
-            #     print("调整路由, slot_no； {} -> {}\r".format(slot_no, (slot_no + 1)%self.tp.num_slot))
-            #     with ThreadPoolExecutor(max_workers=self.tp.num_db) as pool:
-            #         all_task = []
-            #         for db_no in self.tp.db_data:
-            #             if db_no not in self.sw_fail:   # 失效的不告知
-            #                 all_task.append(pool.submit(db_get_slot_change, slot_no, db_no))
-            #         wait(all_task, return_when=ALL_COMPLETED)
 
     def tp_recover(self):
         # topo恢复
@@ -308,12 +304,12 @@ class controller:
         start = time.time()
         with ThreadPoolExecutor(max_workers=32) as pool:
             all_task = []
-        # 把链路重新恢复
+            # 把链路重新恢复
             if os.path.exists(self.tp.filePath + "/config/sw_recover"):
                 os.system("sudo rm -rf {}/config/sw_recover".format(self.tp.filePath))
             os.makedirs(self.tp.filePath + "/config/sw_recover")
             for (sw1, sw2) in self.link_fail:
-                if sw1 not in self.sw_fail and sw2 not in self.sw_fail:
+                if (sw1 not in self.sw_fail) and (sw2 not in self.sw_fail) and (sw2 in self.tp_back.data_topos[slot_no][sw1]):
                     link_add2topo(sw1, sw2, self.tp_back.data_topos[slot_no][sw1][sw2])
             for db_no in self.tp.db_data:
                 if db_no not in self.sw_fail:
@@ -340,7 +336,7 @@ class controller:
             gen_diff_links2sh(self.tp_back)
             print("链路恢复完成！{}\r".format(time.time() - start))
             print("开始模式切换！\r")
-        # 加载控制通道路由
+            # 加载控制通道路由
             for sw_no in self.tp.data_topos[0]:  # db-db的路由读取
                 all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_db2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
             wait(all_task, return_when=ALL_COMPLETED)
@@ -349,7 +345,7 @@ class controller:
                 all_task.append(pool.submit(os.system, "sudo docker exec -it s{} ovs-ofctl add-flows s{} /home/config/sw_route_file/fl_ct2db_s{}_slot{}".format(sw_no, sw_no, sw_no, slot_no)))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
-        # 重新启动数据库
+            # 重新启动数据库
             for db_no in self.tp.db_data:
                 if db_no in self.db_fail:
                     # all_task.append(pool.submit(os.system,"sudo {}/config/db_conf/db_init.sh {}".format(self.tp.filePath, db_no)))
@@ -362,11 +358,12 @@ class controller:
                 all_task.append(pool.submit(os.system,"sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/db_run.sh start {} {}; sleep 1s;\"".format(db_no, db_no, slot_no)))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
+            time.sleep(5)
+            os.system("sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/init_map {} 192.168.68.{} > /dev/null\"".format(13, slot_no, 14))
             for db_no in self.tp.db_data:
-                all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/db.log 2>&1 &\"".format(db_no, db_no+1)))
+                all_task.append(pool.submit(os.system,"sudo docker exec db{} /bin/bash -c \"stdbuf -oL nohup /home/monitor_new 192.168.68.{} > /home/config/db_conf/db{}.log 2>&1 &\"".format(db_no, db_no+1, db_no)))
             wait(all_task, return_when=ALL_COMPLETED)
             all_task.clear()
-            os.system("sudo docker exec -it db{} /bin/bash -c \"/home/config/db_conf/init_map {} 192.168.68.{} > /dev/null\"".format(13, slot_no, 14))
         # 重新启动控制器
             for sw_no in range(self.tp.num_sw):  
                 all_task.append(pool.submit(os.system,"sudo docker exec -it s{s} /bin/bash -c \"/usr/src/openmul/mul.sh stop > /dev/null; sleep 1s; /usr/src/openmul/mul.sh start mulhello > /dev/null;\""\
@@ -383,6 +380,19 @@ class controller:
         self.sw_fail.clear()
         self.db_fail.clear()
         self.link_fail.clear()
+        # 通告时间片
+        with ThreadPoolExecutor(max_workers=32) as pool:
+            all_task = []
+            for ctrl_no in range(self.tp.num_sw):
+                all_task.append(pool.submit(ctrl_get_slot_change, slot_no, ctrl_no))
+            wait(all_task, return_when=ALL_COMPLETED)
+            all_task.clear()
+        with ThreadPoolExecutor(max_workers=self.tp.num_db) as pool:
+            all_task = []
+            for db_no in self.tp.db_data:
+                all_task.append(pool.submit(db_get_slot_change, slot_no, db_no))
+            wait(all_task, return_when=ALL_COMPLETED)
+
         print("模式切换完成！{}\r".format(time.time() - start))
     
     def start(self):
@@ -395,3 +405,4 @@ class controller:
         self.topotimer.stop()
         os.system("stty -raw; sudo docker stop $(sudo docker ps -a -q)")
         os.system("stty -raw; sudo docker rm $(sudo docker ps -a -q)")
+        os.system("stty -raw; sudo kill -s 9 `ps -aux | grep run.py | awk '{print $2}'`  > /dev/null")

@@ -19,4 +19,6 @@ dyn_o_mite:
   recon_key_file: conf/dyno.pem.pub
   recon_iv_file: conf/dyno.pem
   max_msgs: 500000
+  read_consistency: dc_one
+  write_consistency: dc_one
 

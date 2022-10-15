@@ -61,3 +61,7 @@ if __name__ == "__main__":
                 all_task.append(pool.submit(os.system,"sudo docker exec -it s{} /bin/bash /home/config/links_shell/s{}_links_change_slot{}.sh > /dev/null".format(sw_no, sw_no, (slot_no + 1)%tp.num_slot)))
             wait(all_task, return_when=ALL_COMPLETED)
         time.sleep(5)
+    # for i in range(66):
+    #     print(f"s{i}:")
+    #     os.system(f"sudo python3 ./sw_show_log.py {i} | grep recv\ a\ route")
+    #     print(" ")

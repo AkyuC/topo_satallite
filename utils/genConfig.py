@@ -123,6 +123,8 @@ def __a_sw_init_slot2sh(sw_no, filename, sw_adj:dict, is_db=False):
         file.write("ovs-ofctl add-flow s{} \"table=0,priority=50 action=resubmit(,1)\"\n".format(sw_no))
         file.write("ovs-ofctl add-flow s{} \"table=1,priority=10,ip action=drop\"\n".format(sw_no))
         file.write("ovs-ofctl add-flow s{} \"table=1,priority=10,arp action=drop\"\n".format(sw_no))
+        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.0.1 action=drop\"\n".format(sw_no))  # 生成image时留下,丢掉
+        file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.0.1 action=drop\"\n".format(sw_no))
         file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,ip,nw_dst=192.168.66.{} action=output:LOCAL\"\n".format(sw_no, sw_no+1))
         file.write("ovs-ofctl add-flow s{} \"table=0,priority=100,arp,nw_dst=192.168.66.{} action=output:LOCAL\"\n".format(sw_no, sw_no+1))
         if(is_db):
